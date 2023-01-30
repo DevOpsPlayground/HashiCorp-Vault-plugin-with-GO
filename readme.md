@@ -130,7 +130,7 @@ Help: strings.TrimSpace(backendHelp),
 
 Now we have a simple backend set up, time to set up a path.
 
-## Path
+## Step 2: Path
 
 ### schema
 
