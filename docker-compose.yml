@@ -1,0 +1,10 @@
+version: '3.9'
+services:
+  vault:
+    image: vault:1.11.3
+    ports:
+      - "8200:8200"
+      - "8201:8201"
+    volumes:
+      - ./vault:/vault-config
+    command: ["server", "-config=/vault-config/config.hcl","-log-level=debug"]
