@@ -522,3 +522,547 @@ func (b *playerDataBackend) pathPlayerDelete(ctx context.Context, req *logical.R
 ```
 
 This is a basic vault plugin made, In the next steps we will extend the plugin to let it do more than a basic kv.
+
+## Step 3: computed value
+
+One of the cool things you can do is have values you can read but not write (useful if you want to get data from another service)
+
+In this example we will add a level vaule that gets compluted from the amout of experiance you have.
+
+The first step is to add a function that calculates what level you are from your amount of experiance.
+
+Add this to the bottom of the `path_player.go` file:
+
+```go
+func (r *playerDataPlayerEntity) GetLevel() int {
+  return int(math.Floor(math.Sqrt(float64(r.Experience))))
+}
+```
+
+Now we have a function to calculate the level time to add it to the output.
+
+replace:
+
+```go
+func (r *playerDataPlayerEntity) toResponceData() map[string]interface{} {
+  return map[string]interface{}{
+    "class":      r.Class,
+    "experience": r.Experience,
+  }
+}
+```
+
+with:
+
+```go
+func (r *playerDataPlayerEntity) toResponceData() map[string]interface{} {
+  return map[string]interface{}{
+    "class":      r.Class,
+    "experience": r.Experience,
+    "level":      r.GetLevel(),
+  }
+}
+```
+
+Now if we rebuild the plugin. Remake the secret and give the panda some experiance, the level should increase.
+
+Here is a write command that will make the panda with a good amount of experiance
+
+```bash
+vault write DPG-Vault-Plugin/panda experience=1000
+```
+
+## step 4: config
+
+While this example doesnt really have a need for the config part of vault secrets, it is a important part of how vault can connect to other services with out uses being able to see the connection information.
+
+To start with this make a new file called `path_config.go` or run:
+
+```bash
+touch path_config.go
+```
+
+The same as before we need to set up wht schema for the new path.
+
+add the following to the bottom of the new file:
+
+```go
+package playerdata
+
+import (
+  "github.com/hashicorp/vault/sdk/framework"
+  "github.com/hashicorp/vault/sdk/logical"
+)
+
+func pathConfig(b *playerDataBackend) *framework.Path {
+  return &framework.Path{
+    Pattern: "config",
+    Fields: map[string]*framework.FieldSchema{
+      "starting_level": {
+        Type:        framework.TypeInt,
+        Description: "base level to start at",
+        Required:    true,
+        DisplayAttrs: &framework.DisplayAttributes{
+          Name:      "starting_level",
+          Sensitive: false,
+        },
+      },
+    },
+    Operations:      map[logical.Operation]framework.OperationHandler{},
+    HelpSynopsis:    "",
+    HelpDescription: "",
+  }
+}
+
+```
+
+This tells vault what we want to be able to config, normaly this would be a username and password. But here we are going to use it to define what level players start at.
+
+Now go back to `backend.go` and add the path to the `Backend` function
+
+replace:
+
+```go
+Paths: framework.PathAppend(
+  pathPlayer(&b),
+),
+```
+
+with:
+
+```go
+Paths: framework.PathAppend(
+  []*framework.Path{
+    pathConfig(&b),
+  },
+  pathPlayer(&b),
+),
+```
+
+The path can now be seen in vault but we havent got any operations so lets go back to the `path_config.go` file and add them.
+
+replace:
+
+```go
+Operations:      map[logical.Operation]framework.OperationHandler{},
+```
+
+with:
+
+```go
+Operations: map[logical.Operation]framework.OperationHandler{
+  logical.ReadOperation: &framework.PathOperation{
+    Callback: b.pathConfigRead,
+  },
+  logical.CreateOperation: &framework.PathOperation{
+    Callback: b.pathConfigWrite,
+  },
+  logical.UpdateOperation: &framework.PathOperation{
+    Callback: b.pathConfigWrite,
+  },
+  logical.DeleteOperation: &framework.PathOperation{
+    Callback: b.pathConfigDelete,
+  },
+},
+```
+
+Before we add the crud functions there is some helper code that we need first.
+
+Add this above the `pathConig` block of the code:
+
+```go
+const (
+  configStoragePath = "config"
+)
+
+type playerDataConfig struct {
+  StartingLevel int `json:"starting_level"`
+}
+
+func getConfig(ctx context.Context, s logical.Storage) (*playerDataConfig, error) {
+  entry, err := s.Get(ctx, configStoragePath)
+  if err != nil {
+    return nil, err
+  }
+
+  if entry == nil {
+    return &playerDataConfig{}, nil
+  }
+
+  config := new(playerDataConfig)
+  if err := entry.DecodeJSON(&config); err != nil {
+    return nil, fmt.Errorf("error reading root configuration: %w", err)
+  }
+
+  // return the config, we are done
+  return config, nil
+}
+```
+
+Then at the bottom of the file add the follwing to let us read, write and delete:
+
+```go
+func (b *playerDataBackend) pathConfigRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+  c, err := getConfig(ctx, req.Storage)
+  if err != nil {
+    return nil, err
+  }
+
+  return &logical.Response{
+    Data: map[string]interface{}{
+      "starting_level": c.StartingLevel,
+    },
+  }, nil
+}
+
+func (b *playerDataBackend) pathConfigWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+  config, err := getConfig(ctx, req.Storage)
+  if err != nil {
+    return nil, err
+  }
+
+  createOperation := (req.Operation == logical.CreateOperation)
+
+  if config == nil {
+    if !createOperation {
+      return nil, errors.New("config not found during update operation")
+    }
+    config = new(playerDataConfig)
+  }
+
+  if starting_level, ok := data.GetOk("starting_level"); ok {
+    config.StartingLevel = starting_level.(int)
+  } else if !ok && createOperation {
+    return nil, fmt.Errorf("missing starting_level in configuration")
+  }
+
+  entry, err := logical.StorageEntryJSON(configStoragePath, config)
+  if err != nil {
+    return nil, err
+  }
+
+  if err := req.Storage.Put(ctx, entry); err != nil {
+    return nil, err
+  }
+
+  return nil, nil
+}
+
+func (b *playerDataBackend) pathConfigDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+  err := req.Storage.Delete(ctx, configStoragePath)
+
+  if err != nil {
+    return nil, err
+  }
+  return nil, nil
+}
+```
+
+Now we have done all of that but if we run it, there is an error that gets thown when we try and write data. To fix this we need to add an exsistance check.
+
+add the following to the bottom of the file:
+
+```go
+func (b *playerDataBackend) pathConfigExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+  out, err := req.Storage.Get(ctx, req.Path)
+  if err != nil {
+    return false, fmt.Errorf("existence check failed: %w", err)
+  }
+
+  return out != nil, nil
+}
+```
+
+Then in the `PathConfig` function add the following in to the block that is returned, just above `HelpSynopsis`:
+
+```go
+ExistenceCheck:  b.pathConfigExistenceCheck,
+```
+
+Now we can read and write the config, we need to edit the `path_player.go` file to call this config we are setting.
+
+Lets edit the `GetLevel` function to take in a stating level int and use it to calculate the new level.
+
+replace:
+
+```go
+func (r *playerDataPlayerEntity) GetLevel() int {
+  return int(math.Floor(math.Sqrt(float64(r.Experience))))
+}
+```
+
+with:
+
+```go
+func (r *playerDataPlayerEntity) GetLevel(startingLevel int) int {
+  return startingLevel + int(math.Floor(math.Sqrt(float64(r.Experience))))
+}
+```
+
+We now get an error in `toResponceData` lets edit that function to take in a config and pass though the start level to the `GetLevel` function
+
+replace:
+
+```go
+func (r *playerDataPlayerEntity) toResponceData() map[string]interface{} {
+  return map[string]interface{}{
+    "class":      r.Class,
+    "experience": r.Experience,
+    "level":      r.GetLevel(),
+  }
+}
+```
+
+with:
+
+```go
+func (r *playerDataPlayerEntity) toResponceData(config *playerDataConfig) map[string]interface{} {
+  return map[string]interface{}{
+    "class":      r.Class,
+    "experience": r.Experience,
+    "level":      r.GetLevel(config.StartingLevel),
+  }
+}
+```
+
+Now following the error train when we call `toResponceData` in `pathPlayerRead` it needs us to pass though a config, so lets edit that function to get the config and pass it though.
+
+replace:
+
+```go
+return &logical.Response{
+  Data: entry.toResponceData(),
+}, nil
+```
+
+with
+
+```go
+config, err := getConfig(ctx, req.Storage)
+
+if err != nil {
+  return nil, err
+}
+if config == nil {
+  config = &playerDataConfig{}
+}
+
+return &logical.Response{
+  Data: entry.toResponceData(config),
+}, nil
+```
+
+Now when you remake it, if you set the config, then write and read from the panda secret you can see the level will be increased by what you have set as the starting_level.
+
+## step 5: subpaths
+
+One of the other nice features of vault is being able to segrigate things with diffrent paths. For this example we will add a stats block to the player to add aditional stats.
+
+The first step of this we will create a new file called `path_player_stats.go` or do:
+
+```bash
+touch path_player_stats.go
+```
+
+At the top of the new file add:
+
+```go
+package playerdata
+
+func pathPlayerStats(b *playerDataBackend) *framework.Path {
+  return &framework.Path{
+    Pattern: framework.GenericNameRegex("name") + "/stats",
+    Fields: map[string]*framework.FieldSchema{
+      "name": {
+        Type:        framework.TypeLowerCaseString,
+        Description: "Name of the player",
+        Required:    true,
+      },
+      "dexterity": {
+        Type:        framework.TypeInt,
+        Description: "dexterity of the player",
+        Required:    true,
+      },
+      "strength": {
+        Type:        framework.TypeInt,
+        Description: "strength of the player",
+        Required:    true,
+      },
+    },
+    Operations:      map[logical.Operation]framework.OperationHandler{},
+    HelpSynopsis:    "",
+    HelpDescription: "",
+  }
+}
+
+```
+
+Then go back to the `player_player.go` file and edit the `pathPlayer` function with the new path:
+
+replace:
+
+```go
+func pathPlayer(b *playerDataBackend) []*framework.Path {
+  return []*framework.Path{
+    {
+```
+
+with:
+
+```go
+func pathPlayer(b *playerDataBackend) []*framework.Path {
+  return []*framework.Path{
+    pathPlayerStats(b),
+    {
+```
+
+Before we add the operations lets add a struct for the stats code and link it to the main `playerDataPlayerEntity` struct
+
+In the `path_player_struct.go` file add the following code above the `pathPlayerStats` function
+
+```go
+type stats struct {
+  Strength  int `json:"strength"`
+  Dexterity int `json:"dexterity"`
+}
+```
+
+Then swap back to the `path_player.go` file and replace:
+
+```go
+type playerDataPlayerEntity struct {
+  Class      string `json:"class"`
+  Experience int    `json:"experience"`
+}
+```
+
+with:
+
+```go
+type playerDataPlayerEntity struct {
+  Class      string `json:"class"`
+  Experience int    `json:"experience"`
+  Stats      stats  `json:"stats"`
+}
+```
+
+Next we can add the crud operations for this file. Copy all the code below to the bottem of the file, its is similar to the other paths we have made:
+
+```go
+func (r *stats) toResponceData() map[string]interface{} {
+  return map[string]interface{}{
+    "Strength":  r.Strength,
+    "Dexterity": r.Dexterity,
+  }
+}
+
+func setPlayerStats(ctx context.Context, s logical.Storage, name string, playerEntity *playerDataPlayerEntity) error {
+  entry, err := logical.StorageEntryJSON(name, playerEntity)
+  if err != nil {
+    return err
+  }
+  if entry == nil {
+    return fmt.Errorf("failed to create storage entry for player")
+  }
+
+  if err := s.Put(ctx, entry); err != nil {
+    return err
+  }
+  return nil
+}
+func (b *playerDataBackend) getPlayerStats(ctx context.Context, s logical.Storage, name string) (*playerDataPlayerEntity, error) {
+  if name == "" {
+    return nil, fmt.Errorf("missing player name")
+  }
+
+  entry, err := s.Get(ctx, name)
+  if err != nil {
+    return nil, err
+  }
+
+  if entry == nil {
+    return nil, nil
+  }
+
+  var player playerDataPlayerEntity
+
+  if err := entry.DecodeJSON(&player); err != nil {
+    return nil, err
+  }
+
+  return &player, nil
+}
+
+func (b *playerDataBackend) pathPlayerStatsRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+  entry, err := b.getPlayerStats(ctx, req.Storage, d.Get("name").(string))
+  if err != nil {
+    return nil, err
+  }
+  if entry == nil {
+    return nil, nil
+  }
+
+  return &logical.Response{
+    Data: entry.Stats.toResponceData(),
+  }, nil
+}
+
+func (b *playerDataBackend) pathPlayerStatsWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+  name, ok := d.GetOk("name")
+  if !ok {
+    return logical.ErrorResponse("missing player name"), nil
+  }
+
+  playerEntry, err := b.getPlayerStats(ctx, req.Storage, name.(string))
+  if err != nil {
+    return nil, err
+  }
+
+  if playerEntry == nil {
+    playerEntry = &playerDataPlayerEntity{}
+  }
+
+  createOperation := (req.Operation == logical.CreateOperation)
+
+  if strength, ok := d.GetOk("strength"); ok {
+    playerEntry.Stats.Strength = strength.(int)
+  } else if !ok && createOperation {
+    return nil, fmt.Errorf("missing strength in role")
+  }
+
+  if dexterity, ok := d.GetOk("dexterity"); ok {
+    playerEntry.Stats.Dexterity = dexterity.(int)
+  } else if !ok && createOperation {
+    return nil, fmt.Errorf("missing dexterity in role")
+  }
+
+  if err := setPlayerStats(ctx, req.Storage, name.(string), playerEntry); err != nil {
+    return nil, err
+  }
+  return nil, nil
+}
+```
+
+Now we have created the code we need to edit the operation block to call these functions. You need to edit `pathPlayerStats`.
+
+Replace:
+
+```go
+Operations:      map[logical.Operation]framework.OperationHandler{},
+```
+
+With:
+
+```go
+Operations: map[logical.Operation]framework.OperationHandler{
+  logical.ReadOperation: &framework.PathOperation{
+    Callback: b.pathPlayerStatsRead,
+  },
+  logical.CreateOperation: &framework.PathOperation{
+    Callback: b.pathPlayerStatsWrite,
+  },
+  logical.UpdateOperation: &framework.PathOperation{
+    Callback: b.pathPlayerStatsWrite,
+  },
+},
+```
