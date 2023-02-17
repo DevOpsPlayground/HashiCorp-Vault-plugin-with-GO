@@ -660,8 +660,12 @@ add the following to the bottom of the new file:
 package playerdata
 
 import (
-  "github.com/hashicorp/vault/sdk/framework"
-  "github.com/hashicorp/vault/sdk/logical"
+	"context"
+	"fmt"
+	"errors"
+
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
 )
 
 func pathConfig(b *playerDataBackend) *framework.Path {
@@ -923,6 +927,16 @@ return &logical.Response{
 ```
 
 Now when you remake it, if you set the config, then write and read from the panda secret you can see the level will be increased by what you have set as the starting_level.
+
+If you run the following commands:
+
+```bash
+vault write DPG-Vault-Plugin/config starting_level=10
+vault write DPG-Vault-Plugin/panda class=rdm
+vault read DPG-Vault-Plugin/panda
+```
+
+The level should be at 10 over 0
 
 ## step 5: subpaths
 
