@@ -1030,7 +1030,7 @@ type playerDataPlayerEntity struct {
 }
 ```
 
-Next we can add the crud operations for this file. Copy all the code below to the bottem of the file, its is similar to the other paths we have made:
+Next we can add the crud operations for this file. Copy all the code below to the bottem of the `path_player_stats.go` file, its is similar to the other paths we have made:
 
 ```go
 func (r *stats) toResponceData() map[string]interface{} {
@@ -1149,4 +1149,15 @@ Operations: map[logical.Operation]framework.OperationHandler{
     Callback: b.pathPlayerStatsWrite,
   },
 },
+```
+Final thing we need to do, is add the imports at the top of the file
+
+```go
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+)
 ```
