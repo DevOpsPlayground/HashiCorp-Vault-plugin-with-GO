@@ -90,6 +90,16 @@ func backend() *playerDataBackend {
 }
 ```
 
+We also need to add a new import, at the top of the page change the import block to
+
+```go
+import (
+	"context"
+    "github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+)
+```
+
 To see that this works in vault run
 
 ```bash
