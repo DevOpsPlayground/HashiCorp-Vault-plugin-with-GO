@@ -94,10 +94,18 @@ We also need to add a new import, at the top of the page change the import block
 
 ```go
 import (
-	"context"
-    "github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+  "context"
+  "github.com/hashicorp/vault/sdk/framework"
+  "github.com/hashicorp/vault/sdk/logical"
 )
+```
+
+As we have changed the imports, we need to rerun go mod tidy. 
+
+So in your command line run
+
+```bash
+go mod tidy
 ```
 
 To see that this works in vault run
