@@ -621,6 +621,19 @@ func (r *playerDataPlayerEntity) toResponceData() map[string]interface{} {
 }
 ```
 
+One last import change from this file to add the math package. Replace the import block at the top with:
+
+```go
+import (
+	"context"
+	"fmt"
+	"math"
+
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+)
+```
+
 Now if we rebuild the plugin. Remake the secret and give the panda some experiance, the level should increase.
 
 Here is a write command that will make the panda with a good amount of experiance
