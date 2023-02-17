@@ -1,13 +1,7 @@
 #!/bin/bash
 
-docker-compose --version
-if [ $? -eq 0 ]; then
-  docker-compose down
-  docker-compose up -d
-else
-  docker compose down
-  docker compose up -d
-fi
+nohup /usr/bin/vault server -config /home/playground/workdir/HashiCorp-Vault-plugin-with-GO/vault/config.hcl &
+
 sleep 5
 export VAULT_ADDR='http://127.0.0.1:8200'
 echo $VAULT_ADDR
