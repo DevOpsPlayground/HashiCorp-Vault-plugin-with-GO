@@ -1,5 +1,5 @@
 plugin_name = DPG-Vault-Plugin
-SHA := $(shell shasum -a 256 vault/plugins/$(plugin_name) | cut -d ' ' -f1)
+SHA := $(shell sha256sum vault/plugins/$(plugin_name) | cut -d ' ' -f1)
 
 build:
 	GOOS=linux GOARCH=amd64 go build -o vault/plugins/$(plugin_name) ./cmd/$(plugin_name)/main.go
