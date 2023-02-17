@@ -290,10 +290,13 @@ Before we define the function that is is complaining about we need to add 2 more
 We need a struct we can pass around and convert the input in to something we can save.
 
 Add the following to the `path_player.go` file just under the imports
+
+```go
 type playerDataPlayerEntity struct {
   Class      string `json:"class"`
   Experience int    `json:"experience"`
 }
+```
 
 To make our code more scalable and editable in the future we want to make a `getplayer` function our `pathPlayerRead` can call so we can split the geting the data and the vault parts.
 
@@ -352,6 +355,18 @@ func (r *playerDataPlayerEntity) toResponceData() map[string]interface{} {
     "experience": r.Experience,
   }
 }
+```
+
+Once we have writen the functions we need to add a few more imports to the top of the file, replace the import block with 
+
+```go
+import (
+  "context"
+  "fmt"
+
+  "github.com/hashicorp/vault/sdk/framework"
+  "github.com/hashicorp/vault/sdk/logical"
+)
 ```
 
 ### Write
