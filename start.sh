@@ -1,5 +1,4 @@
 #!/bin/bash
-set -o xtrace
 
 docker-compose --version
 if [ $? -eq 0 ]; then
