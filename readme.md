@@ -202,6 +202,16 @@ func pathPlayer(b *playerDataBackend) []*framework.Path {
 }
 ```
 
+You then need to add the required imports just below the line `package playerdata`
+
+```go
+import (
+
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+)
+```
+
 Now if you buld the code again and run the help again.
 
 You will see nothing has changed, that is because even though we have writen the path code, we havent told the backend about it yet.
