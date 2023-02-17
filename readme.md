@@ -644,7 +644,7 @@ vault write DPG-Vault-Plugin/panda experience=1000
 
 ## step 4: config
 
-While this example doesnt really have a need for the config part of vault secrets, it is a important part of how vault can connect to other services with out uses being able to see the connection information.
+While this example doesnt really have a need for the config part of vault secrets, it is a important part of how vault can connect to other services with out users being able to see the connection information.
 
 To start with this make a new file called `path_config.go` or run:
 
