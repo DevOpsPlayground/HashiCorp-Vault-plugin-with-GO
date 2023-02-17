@@ -148,6 +148,18 @@ Then in the `Backend()` function change `Help: "",` to:
 Help: strings.TrimSpace(backendHelp),
 ```
 
+We need one more import change. At the to of the file, replace the inport block with 
+
+```go
+import (
+	"context"
+	"strings"
+
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/logical"
+)
+```
+
 Now we have a simple backend set up, time to set up a path.
 
 ## Step 2: Path
