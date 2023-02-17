@@ -386,10 +386,10 @@ with:
 ```go
 Operations: map[logical.Operation]framework.OperationHandler{
   logical.ReadOperation: &framework.PathOperation{
-    Callback: b.pathPlayerStatsRead,
+    Callback: b.pathPlayerRead,
   },
   logical.CreateOperation: &framework.PathOperation{
-    Callback: b.pathPlayerStatsWrite,
+    Callback: b.pathPlayerWrite,
   },
   logical.UpdateOperation: &framework.PathOperation{
     Callback: b.pathPlayerWrite,
