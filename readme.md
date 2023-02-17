@@ -70,7 +70,7 @@ After this swap to your terminal and run the following to make sure all the impo
 go mod tidy
 ```
 
-This stops all the errors, but there is still a few more steps to let us use this within vault. Replace the `bachend()` function you just made with the following:
+This stops all the errors, but there is still a few more steps to let us use this within vault. Replace the `backend()` function you just made with the following:
 
 ```go
 func backend() *playerDataBackend {
