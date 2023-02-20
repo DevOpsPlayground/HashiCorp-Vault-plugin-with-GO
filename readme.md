@@ -469,7 +469,13 @@ func (b *playerDataBackend) pathPlayerWrite(ctx context.Context, req *logical.Re
 }
 ```
 
-We can now read and write to vault, re build the plugin, and run the following command to save your first secret:
+We can now read and write to vault, re build the plugin:
+
+```bash
+make build
+```
+
+And run the following command to save your first secret:
 
 ```bash
 vault write DPG-Vault-Plugin/panda class=rdm
@@ -527,7 +533,17 @@ func (b *playerDataBackend) pathPlayerList(ctx context.Context, req *logical.Req
 
 This code gets all the entries in the vault storage, and returns it.
 
-You can now rebuild the plugin and test out the list (you need to remake the secret everytime you rebuild the plugin)
+You can now rebuild the plugin: 
+
+``bash
+make build
+```
+
+And test out the list (you need to remake the secret everytime you rebuild the plugin)
+
+```bash
+vault write DPG-Vault-Plugin/panda class=rdm experience=10
+```
 
 Run this code to show the list:
 
@@ -586,6 +602,16 @@ func (b *playerDataBackend) pathPlayerDelete(ctx context.Context, req *logical.R
 }
 ```
 
+Run the following to see delete in action
+
+```bash
+make build
+vault write DPG-Vault-Plugin/panda class=rdm experience=10
+vault read DPG-Vault-Plugin/panda
+vault delete DPG-Vault-Plugin/panda
+vault read DPG-Vault-Plugin/panda
+```
+
 This is a basic vault plugin made, In the next steps we will extend the plugin to let it do more than a basic kv.
 
 ## Step 3: computed value
@@ -642,12 +668,19 @@ import (
 )
 ```
 
-Now if we rebuild the plugin. Remake the secret and give the panda some experiance, the level should increase.
+Now if we rebuild the plugin:
+
+```bash
+make bauild
+```
+
+Remake the secret and give the panda some experiance, the level should increase.
 
 Here is a write command that will make the panda with a good amount of experiance
 
 ```bash
 vault write DPG-Vault-Plugin/panda experience=1000
+vault read DPG-Vault-Plugin/panda
 ```
 
 ## step 4: config
