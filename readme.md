@@ -27,6 +27,14 @@ export VAULT_TOKEN=<token>
 export VAULT_ADDR=http://127.0.0.1:8200
 ```
 
+If you have an issue and your environment variables mess up, you can find your vault token by running
+
+```bash
+history | grep VAULT_TOKEN
+```
+
+Which should return the line when you first exported it
+
 ## Step 1: Backend
 
 To allow vault to know what this plugin can do and what paths it uses, we set up a backend.
