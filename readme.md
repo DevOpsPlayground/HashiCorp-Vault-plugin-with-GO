@@ -43,7 +43,7 @@ As part of the empty template we have set up an empty factory that gets run when
 
 The first step of setting up the backend is filling in the Factory block
 
-Open the `backed.go` file
+Open the `backend.go` file
 
 Replace the factory block with
 
