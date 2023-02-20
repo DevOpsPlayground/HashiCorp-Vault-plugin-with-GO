@@ -742,7 +742,7 @@ Operations: map[logical.Operation]framework.OperationHandler{
 
 Before we add the crud functions there is some helper code that we need first.
 
-Add this above the `pathConig` block of the code:
+Add this above the `pathConfig` block of the code:
 
 ```go
 const (
